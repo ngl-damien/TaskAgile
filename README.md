@@ -1,5 +1,9 @@
 # TaskAgile
 
+## Mandatory agent instructions
+
+Every agent must read [AGENTS.md](AGENTS.md) before acting. It preserves the current Ralph-loop state and adds the shared NGL evidence, coordination, and founder-authority contract.
+
 ## Repository Information
 
 **Status**: ✅ Successfully audited and recreated  
