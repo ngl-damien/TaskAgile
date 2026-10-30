@@ -2,16 +2,65 @@ name: Org CI
 
 on:
   push:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
   pull_request:
-    branches: [ main, master, develop ]
+    branches: [main, master, develop]
+
+permissions:
+  contents: read
 
 jobs:
   core:
-    uses: No-Gas-Labs-Official/no-gas-labs-governance/.github/workflows/ci-core.yml@main
+    name: Build and type-check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install locked dependencies
+        run: npm ci
+      - name: Type-check
+        run: npm run check
+      - name: Run tests when a test script exists
+        run: |
+          if npm run | grep -qE '^[[:space:]]+test([[:space:]]|$)'; then
+            npm test
+          else
+            echo "No test script is defined; no automated test suite was run."
+          fi
+      - name: Build
+        run: npm run build
 
   security:
-    uses: No-Gas-Labs-Official/no-gas-labs-governance/.github/workflows/security-core.yml@main
+    name: Secret scanning
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan repository history and changes
+        uses: trufflesecurity/trufflehog@363923b901c911a9164f50b6c423f47c15372b1c # v3.97.4
+        with:
+          extra_args: "--results=verified,unknown"
 
   classification:
-    uses: No-Gas-Labs-Official/no-gas-labs-governance/.github/workflows/repo-classification-check.yml@main
+    name: Repository classification
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Require classification metadata
+        run: |
+          test -f .repo-classification.json || {
+            echo "::error::.repo-classification.json is missing"
+            exit 1
+          }
+      - name: Validate classification schema and required fields
+        run: |
+          jq -e '
+            (.state == "ACTIVE" or .state == "SANDBOX" or .state == "FROZEN")
+            and ((.state != "ACTIVE") or
+              (.criticality == "HIGH" or .criticality == "MEDIUM" or .criticality == "LOW"))
+          ' .repo-classification.json > /dev/null
