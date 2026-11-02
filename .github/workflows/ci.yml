@@ -18,8 +18,8 @@ jobs:
         node-version: '20'
         cache: 'npm'
         
-    - name: Install dependencies
-      run: npm install
+    - name: Install locked runtime and type-check dependencies
+      run: npm ci --include=dev
       
     - name: Type check
       run: npm run check
